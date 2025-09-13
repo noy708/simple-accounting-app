@@ -48,17 +48,20 @@ public class PdfService : IPdfService
             {
                 browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
-                    Headless = false,  // ブラウザウィンドウを表示
-                    Devtools = true,    // 開発者ツールも開く
-                    Args = new[] { "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage" }
+                    Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
+                    Args = new[] { 
+                        "--no-sandbox", 
+                        "--disable-setuid-sandbox", 
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--disable-web-security",
+                        "--disable-features=VizDisplayCompositor"
+                    }
                 });
 
                 page = await browser.NewPageAsync();
                 await page.SetContentAsync(html);
-
-                Console.WriteLine("ブラウザで内容を確認してください。Enterキーを押すと続行します...");
-                Console.ReadLine(); // 手動で続行するまで待機
-
+                
                 var pdfBytes = await page.PdfDataAsync(new PdfOptions
                 {
                     Format = PaperFormat.A4,
