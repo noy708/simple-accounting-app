@@ -56,8 +56,17 @@ RUN apt-get update && apt-get install -y \
 # Create directory for SQLite database
 RUN mkdir -p /app/data
 
+# Create a non-root user for running the application
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Change ownership of the app directory
+RUN chown -R appuser:appuser /app
+
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:80
 ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/accounting.db"
+
+# Switch to non-root user
+USER appuser
 
 ENTRYPOINT ["dotnet", "SimpleAccounting.API.dll"]
