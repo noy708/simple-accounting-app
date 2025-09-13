@@ -37,8 +37,6 @@ export default function Dashboard() {
     creating,
     error,
     createTransaction,
-    refreshTransactions,
-    refreshBalance,
   } = useTransactions();
 
   // Notification state management

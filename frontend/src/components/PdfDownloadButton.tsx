@@ -53,9 +53,7 @@ export const PdfDownloadButton: React.FC<PdfDownloadButtonProps> = ({
       // より詳細なエラー情報を表示
       let errorMessage = 'PDFのダウンロード中にエラーが発生しました';
       
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = (error as any).message;
-      } else if (error instanceof Error) {
+      if (error instanceof Error) {
         errorMessage = error.message;
       }
       
