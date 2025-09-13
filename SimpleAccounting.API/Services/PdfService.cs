@@ -38,31 +38,6 @@ public class PdfService : IPdfService
 
             // PuppeteerSharpでPDF生成
             Console.WriteLine("Chromiumダウンロード開始");
-            var browserFetcher = new BrowserFetcher();
-            try
-            {
-                await browserFetcher.DownloadAsync();
-                Console.WriteLine("Chromiumダウンロード完了");
-                
-                var executablePath = browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision);
-                Console.WriteLine($"Chromium実行可能ファイルパス: {executablePath}");
-                
-                // ファイルの存在確認
-                if (!File.Exists(executablePath))
-                {
-                    throw new InvalidOperationException($"Chromium実行可能ファイルが見つかりません: {executablePath}");
-                }
-                
-                // ファイル権限の確認
-                var fileInfo = new FileInfo(executablePath);
-                Console.WriteLine($"Chromiumファイル権限: {fileInfo.Attributes}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Chromiumダウンロードエラー: {ex.Message}");
-                Console.WriteLine($"スタックトレース: {ex.StackTrace}");
-                throw new InvalidOperationException("Chromiumブラウザのダウンロードに失敗しました", ex);
-            }
             
             IBrowser? browser = null;
             IPage? page = null;
@@ -70,12 +45,10 @@ public class PdfService : IPdfService
             try
             {
                 Console.WriteLine("ブラウザ起動開始");
-                var executablePath = browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision);
                 
                 browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
                     Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
-                    ExecutablePath = executablePath,  // 明示的にパスを指定
                     Args = new[] { 
                         "--no-sandbox", 
                         "--disable-setuid-sandbox", 
