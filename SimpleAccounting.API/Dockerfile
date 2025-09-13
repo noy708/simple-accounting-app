@@ -53,14 +53,13 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directory for SQLite database
-RUN mkdir -p /app/data
-
 # Create a non-root user for running the application
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Change ownership of the app directory
-RUN chown -R appuser:appuser /app
+# Create directory for SQLite database with proper permissions
+RUN mkdir -p /app/data && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app/data
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:80
