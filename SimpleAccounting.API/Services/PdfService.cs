@@ -38,10 +38,24 @@ public class PdfService : IPdfService
 
             // PuppeteerSharpでPDF生成
             Console.WriteLine("Chromiumダウンロード開始");
+            var browserFetcher = new BrowserFetcher();
             try
             {
-                await new BrowserFetcher().DownloadAsync();
+                await browserFetcher.DownloadAsync();
                 Console.WriteLine("Chromiumダウンロード完了");
+                
+                var executablePath = browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision);
+                Console.WriteLine($"Chromium実行可能ファイルパス: {executablePath}");
+                
+                // ファイルの存在確認
+                if (!File.Exists(executablePath))
+                {
+                    throw new InvalidOperationException($"Chromium実行可能ファイルが見つかりません: {executablePath}");
+                }
+                
+                // ファイル権限の確認
+                var fileInfo = new FileInfo(executablePath);
+                Console.WriteLine($"Chromiumファイル権限: {fileInfo.Attributes}");
             }
             catch (Exception ex)
             {
@@ -56,9 +70,12 @@ public class PdfService : IPdfService
             try
             {
                 Console.WriteLine("ブラウザ起動開始");
+                var executablePath = browserFetcher.GetExecutablePath(BrowserFetcher.DefaultChromiumRevision);
+                
                 browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
                     Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
+                    ExecutablePath = executablePath,  // 明示的にパスを指定
                     Args = new[] { 
                         "--no-sandbox", 
                         "--disable-setuid-sandbox", 
@@ -83,20 +100,19 @@ public class PdfService : IPdfService
                         "--ignore-certificate-errors-spki-list",
                         "--ignore-certificate-errors-ssl-errors",
                         "--disable-background-networking",
-                        "--disable-background-timer-throttling",
                         "--disable-client-side-phishing-detection",
-                        "--disable-default-apps",
                         "--disable-hang-monitor",
                         "--disable-popup-blocking",
                         "--disable-prompt-on-repost",
-                        "--disable-sync",
                         "--disable-web-resources",
                         "--metrics-recording-only",
                         "--no-default-browser-check",
-                        "--no-first-run",
                         "--password-store=basic",
                         "--use-mock-keychain",
-                        "--single-process"
+                        "--single-process",
+                        "--disable-logging",
+                        "--disable-gpu-logging",
+                        "--silent"
                     }
                 });
                 Console.WriteLine("ブラウザ起動完了");
