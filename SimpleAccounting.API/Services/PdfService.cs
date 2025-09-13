@@ -19,25 +19,34 @@ public class PdfService : IPdfService
     {
         try
         {
+            Console.WriteLine("PDF生成開始");
+            
             // 取引データを取得
             var transactions = await _context.Transactions
                 .OrderBy(t => t.Date)
                 .ToListAsync();
+            Console.WriteLine($"取引データ取得完了: {transactions.Count}件");
 
             // 残高を計算
             var balance = transactions
                 .Sum(t => t.Type == Models.TransactionType.Income ? t.Amount : -t.Amount);
+            Console.WriteLine($"残高計算完了: {balance}");
 
             // HTMLテンプレートを生成
             var html = GenerateHtmlTemplate(transactions, balance);
+            Console.WriteLine("HTMLテンプレート生成完了");
 
             // PuppeteerSharpでPDF生成
+            Console.WriteLine("Chromiumダウンロード開始");
             try
             {
                 await new BrowserFetcher().DownloadAsync();
+                Console.WriteLine("Chromiumダウンロード完了");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Chromiumダウンロードエラー: {ex.Message}");
+                Console.WriteLine($"スタックトレース: {ex.StackTrace}");
                 throw new InvalidOperationException("Chromiumブラウザのダウンロードに失敗しました", ex);
             }
             
@@ -46,6 +55,7 @@ public class PdfService : IPdfService
             
             try
             {
+                Console.WriteLine("ブラウザ起動開始");
                 browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
                     Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
@@ -58,10 +68,17 @@ public class PdfService : IPdfService
                         "--disable-features=VizDisplayCompositor"
                     }
                 });
+                Console.WriteLine("ブラウザ起動完了");
 
+                Console.WriteLine("ページ作成開始");
                 page = await browser.NewPageAsync();
-                await page.SetContentAsync(html);
+                Console.WriteLine("ページ作成完了");
                 
+                Console.WriteLine("HTMLコンテンツ設定開始");
+                await page.SetContentAsync(html);
+                Console.WriteLine("HTMLコンテンツ設定完了");
+                
+                Console.WriteLine("PDF生成開始");
                 var pdfBytes = await page.PdfDataAsync(new PdfOptions
                 {
                     Format = PaperFormat.A4,
@@ -74,11 +91,19 @@ public class PdfService : IPdfService
                     },
                     PrintBackground = true
                 });
+                Console.WriteLine("PDF生成完了");
 
                 return pdfBytes ?? Array.Empty<byte>();
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"PDF生成エラー: {ex.Message}");
+                Console.WriteLine($"スタックトレース: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"内部例外: {ex.InnerException.Message}");
+                    Console.WriteLine($"内部例外スタックトレース: {ex.InnerException.StackTrace}");
+                }
                 throw new InvalidOperationException("PDF生成中にエラーが発生しました", ex);
             }
             finally
