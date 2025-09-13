@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./SimpleAccounting.API
+      dockerfile: Dockerfile
+    ports:
+      - "5212:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/accounting.db
+    volumes:
+      - accounting_data:/app/data
+    networks:
+      - accounting_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5212/api
+    depends_on:
+      - api
+    networks:
+      - accounting_network
+
+volumes:
+  accounting_data:
+
+networks:
+  accounting_network:
+    driver: bridge

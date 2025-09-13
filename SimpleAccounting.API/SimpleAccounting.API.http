@@ -1,0 +1,39 @@
+@SimpleAccounting.API_HostAddress = http://127.0.0.1:5212
+
+# Get all transactions
+GET {{SimpleAccounting.API_HostAddress}}/api/transactions
+Accept: application/json
+
+###
+
+# Get current balance
+GET {{SimpleAccounting.API_HostAddress}}/api/transactions/balance
+Accept: application/json
+
+###
+
+# Create a new income transaction
+POST {{SimpleAccounting.API_HostAddress}}/api/transactions
+Content-Type: application/json
+
+{
+  "amount": 1000.50,
+  "description": "給与",
+  "type": 0,
+  "date": "2025-01-06T00:00:00"
+}
+
+###
+
+# Create a new expense transaction
+POST {{SimpleAccounting.API_HostAddress}}/api/transactions
+Content-Type: application/json
+
+{
+  "amount": 500.00,
+  "description": "食費",
+  "type": 1,
+  "date": "2025-01-06T00:00:00"
+}
+
+###

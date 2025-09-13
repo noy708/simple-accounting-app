@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleAccounting.API", "SimpleAccounting.API\SimpleAccounting.API.csproj", "{9ABE5FB3-D33C-4369-821C-30D4EB6C87F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleAccounting.Tests", "SimpleAccounting.Tests\SimpleAccounting.Tests.csproj", "{C85B9EDA-1652-483A-91F5-DC5A433A3CE7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9ABE5FB3-D33C-4369-821C-30D4EB6C87F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ABE5FB3-D33C-4369-821C-30D4EB6C87F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ABE5FB3-D33C-4369-821C-30D4EB6C87F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ABE5FB3-D33C-4369-821C-30D4EB6C87F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C85B9EDA-1652-483A-91F5-DC5A433A3CE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C85B9EDA-1652-483A-91F5-DC5A433A3CE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C85B9EDA-1652-483A-91F5-DC5A433A3CE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C85B9EDA-1652-483A-91F5-DC5A433A3CE7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
