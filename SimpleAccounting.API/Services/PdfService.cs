@@ -48,45 +48,9 @@ public class PdfService : IPdfService
                 
                 browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
+                    ExecutablePath = "/usr/bin/chromium",
                     Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
-                    Args = new[] { 
-                        "--no-sandbox", 
-                        "--disable-setuid-sandbox", 
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                        "--disable-web-security",
-                        "--disable-features=VizDisplayCompositor",
-                        "--disable-background-timer-throttling",
-                        "--disable-backgrounding-occluded-windows",
-                        "--disable-renderer-backgrounding",
-                        "--disable-ipc-flooding-protection",
-                        "--disable-extensions",
-                        "--disable-default-apps",
-                        "--disable-sync",
-                        "--disable-translate",
-                        "--hide-scrollbars",
-                        "--mute-audio",
-                        "--no-first-run",
-                        "--safebrowsing-disable-auto-update",
-                        "--ignore-certificate-errors",
-                        "--ignore-ssl-errors",
-                        "--ignore-certificate-errors-spki-list",
-                        "--ignore-certificate-errors-ssl-errors",
-                        "--disable-background-networking",
-                        "--disable-client-side-phishing-detection",
-                        "--disable-hang-monitor",
-                        "--disable-popup-blocking",
-                        "--disable-prompt-on-repost",
-                        "--disable-web-resources",
-                        "--metrics-recording-only",
-                        "--no-default-browser-check",
-                        "--password-store=basic",
-                        "--use-mock-keychain",
-                        "--single-process",
-                        "--disable-logging",
-                        "--disable-gpu-logging",
-                        "--silent"
-                    }
+                    Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
                 });
                 Console.WriteLine("ブラウザ起動完了");
 
@@ -157,7 +121,8 @@ public class PdfService : IPdfService
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
         
         body { 
-            font-family: 'Noto Serif JP', serif; 
+            /* IPAex明朝を指定 */
+            font-family: 'IPAexMincho', serif; 
             margin: 0;
             padding: 20px;
             line-height: 1.6;

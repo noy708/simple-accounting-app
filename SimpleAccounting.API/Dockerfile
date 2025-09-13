@@ -20,8 +20,20 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+# タイムゾーンを日本に設定
+ENV TZ=Asia/Tokyo
+
 # Install dependencies for PuppeteerSharp/Chromium
 RUN apt-get update && apt-get install -y \
+    chromium \
+    # 以下、日本語フォント関連パッケージを追加
+    fonts-noto \
+    fonts-ipaexfont \
+    fonts-noto-cjk \
+    fonts-ipafont-gothic \
+    fonts-ipafont-mincho \
+    fonts-takao-gothic \
+    fonts-takao-mincho \
     wget \
     gnupg \
     ca-certificates \
