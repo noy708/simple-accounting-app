@@ -1,9 +1,3 @@
-# Use the official .NET 8 runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 80
-EXPOSE 443
-
 # Use the official .NET 8 SDK image for building
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
@@ -16,17 +10,25 @@ RUN dotnet build "SimpleAccounting.API.csproj" -c Release -o /app/build
 FROM build AS publish
 RUN dotnet publish "SimpleAccounting.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM base AS final
+# Install Node.js and Playwright browsers with specific path
+RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
+
+# Set Playwright browsers path and install
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright@latest install chromium --with-deps
+
+# Use the official .NET 8 runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+EXPOSE 80
+EXPOSE 443
 
 # タイムゾーンを日本に設定
 ENV TZ=Asia/Tokyo
 
-# Install dependencies for PuppeteerSharp/Chromium
+# Install dependencies for Playwright/Chromium
 RUN apt-get update && apt-get install -y \
-    chromium \
-    # 以下、日本語フォント関連パッケージを追加
+    # 日本語フォント関連パッケージ
     fonts-noto \
     fonts-ipaexfont \
     fonts-noto-cjk \
@@ -34,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     fonts-ipafont-mincho \
     fonts-takao-gothic \
     fonts-takao-mincho \
+    # Playwright/Chromium用の依存関係
     wget \
     gnupg \
     ca-certificates \
@@ -64,21 +67,20 @@ RUN apt-get update && apt-get install -y \
     libappindicator3-1 \
     libatk-bridge2.0-0 \
     libatspi2.0-0 \
-    libgtk-3-0 \
     libnspr4 \
-    libnss3 \
     libx11-xcb1 \
     libxcb-dri3-0 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxi6 \
-    libxrandr2 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
+    # Node.js (ランタイムでも必要)
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy published application
+COPY --from=publish /app/publish .
+
+# Install Playwright browsers directly in final stage
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright@latest install chromium --with-deps
 
 # Create a non-root user for running the application
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -86,6 +88,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && \
     chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /ms-playwright && \
     chmod -R 755 /app/data
 
 # Set environment variables

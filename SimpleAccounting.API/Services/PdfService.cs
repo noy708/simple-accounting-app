@@ -1,5 +1,4 @@
-using PuppeteerSharp;
-using PuppeteerSharp.Media;
+using Microsoft.Playwright;
 using SimpleAccounting.API.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -21,6 +20,57 @@ public class PdfService : IPdfService
         {
             Console.WriteLine("PDF生成開始");
             
+            // Playwright環境変数の設定とデバッグ
+            var browsersPath = "/ms-playwright";
+            Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", browsersPath);
+            
+            // デバッグ情報を出力
+            Console.WriteLine($"PLAYWRIGHT_BROWSERS_PATH設定: {Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH")}");
+            Console.WriteLine($"現在のユーザー: {Environment.UserName}");
+            Console.WriteLine($"ホームディレクトリ: {Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}");
+            
+            // ブラウザディレクトリの存在確認
+            if (Directory.Exists(browsersPath))
+            {
+                Console.WriteLine($"ブラウザディレクトリが存在します: {browsersPath}");
+                var directories = Directory.GetDirectories(browsersPath);
+                foreach (var dir in directories)
+                {
+                    Console.WriteLine($"  サブディレクトリ: {dir}");
+                    // Chromiumディレクトリ内をチェック
+                    if (dir.Contains("chromium"))
+                    {
+                        var chromeFiles = Directory.GetFiles(dir, "*chrome*", SearchOption.AllDirectories);
+                        foreach (var file in chromeFiles.Take(5))
+                        {
+                            Console.WriteLine($"    ファイル: {file}");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"ブラウザディレクトリが存在しません: {browsersPath}");
+                
+                // 代替パスを試す
+                var altPaths = new[]
+                {
+                    "/home/appuser/.cache/ms-playwright",
+                    "/root/.cache/ms-playwright"
+                };
+                
+                foreach (var altPath in altPaths)
+                {
+                    if (Directory.Exists(altPath))
+                    {
+                        Console.WriteLine($"代替パスが見つかりました: {altPath}");
+                        Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", altPath);
+                        browsersPath = altPath;
+                        break;
+                    }
+                }
+            }
+            
             // 取引データを取得
             var transactions = await _context.Transactions
                 .OrderBy(t => t.Date)
@@ -36,8 +86,10 @@ public class PdfService : IPdfService
             var html = GenerateHtmlTemplate(transactions, balance);
             Console.WriteLine("HTMLテンプレート生成完了");
 
-            // PuppeteerSharpでPDF生成
-            Console.WriteLine("Chromiumダウンロード開始");
+            // PlaywrightでPDF生成
+            Console.WriteLine("Playwright初期化開始");
+            
+            using var playwright = await Playwright.CreateAsync();
             
             IBrowser? browser = null;
             IPage? page = null;
@@ -46,11 +98,20 @@ public class PdfService : IPdfService
             {
                 Console.WriteLine("ブラウザ起動開始");
                 
-                browser = await Puppeteer.LaunchAsync(new LaunchOptions
+                browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
-                    ExecutablePath = "/usr/bin/chromium",
                     Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
-                    Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
+                    Args = new[] { 
+                        "--no-sandbox", 
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-extensions",
+                        "--disable-gpu",
+                        "--no-first-run",
+                        "--disable-background-timer-throttling",
+                        "--disable-backgrounding-occluded-windows",
+                        "--disable-renderer-backgrounding"
+                    }
                 });
                 Console.WriteLine("ブラウザ起動完了");
 
@@ -63,10 +124,10 @@ public class PdfService : IPdfService
                 Console.WriteLine("HTMLコンテンツ設定完了");
                 
                 Console.WriteLine("PDF生成開始");
-                var pdfBytes = await page.PdfDataAsync(new PdfOptions
+                var pdfBytes = await page.PdfAsync(new PagePdfOptions
                 {
-                    Format = PaperFormat.A4,
-                    MarginOptions = new MarginOptions
+                    Format = "A4",
+                    Margin = new Margin
                     {
                         Top = "20mm",
                         Right = "20mm", 
@@ -77,7 +138,7 @@ public class PdfService : IPdfService
                 });
                 Console.WriteLine("PDF生成完了");
 
-                return pdfBytes ?? Array.Empty<byte>();
+                return pdfBytes;
             }
             catch (Exception ex)
             {
