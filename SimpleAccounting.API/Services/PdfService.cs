@@ -1,17 +1,19 @@
 using Microsoft.Playwright;
 using SimpleAccounting.API.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
+using SimpleAccounting.API.Models;
 
 namespace SimpleAccounting.API.Services;
 
 public class PdfService : IPdfService
 {
     private readonly AccountingDbContext _context;
+    private readonly ITemplateRenderingService _templateRenderingService;
 
-    public PdfService(AccountingDbContext context)
+    public PdfService(AccountingDbContext context, ITemplateRenderingService templateRenderingService)
     {
         _context = context;
+        _templateRenderingService = templateRenderingService;
     }
 
     private async Task EnsurePlaywrightBrowsersInstalledAsync()
@@ -78,8 +80,29 @@ public class PdfService : IPdfService
             Console.WriteLine($"残高計算完了: {balance}");
 
             // HTMLテンプレートを生成
-            var html = GenerateHtmlTemplate(transactions, balance);
-            Console.WriteLine("HTMLテンプレート生成完了");
+            Console.WriteLine("ViewModel作成開始");
+            var viewModel = new TransactionReportViewModel
+            {
+                Transactions = transactions,
+                Balance = balance,
+                GeneratedAt = DateTime.Now
+            };
+            Console.WriteLine("ViewModel作成完了");
+            
+            Console.WriteLine("テンプレートレンダリング開始");
+            string html;
+            try
+            {
+                html = await _templateRenderingService.RenderTemplateAsync("Templates/TransactionReport", viewModel);
+                Console.WriteLine("HTMLテンプレート生成完了");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"テンプレートレンダリングエラー: {ex.Message}");
+                Console.WriteLine("フォールバック: 従来のHTML生成方法を使用します");
+                html = GenerateHtmlTemplateFallback(transactions, balance);
+                Console.WriteLine("フォールバックHTMLテンプレート生成完了");
+            }
 
             // PlaywrightでPDF生成
             Console.WriteLine("Playwright初期化開始");
@@ -164,9 +187,9 @@ public class PdfService : IPdfService
         }
     }
 
-    private string GenerateHtmlTemplate(IEnumerable<Models.Transaction> transactions, decimal balance)
+    private string GenerateHtmlTemplateFallback(IEnumerable<Models.Transaction> transactions, decimal balance)
     {
-        var html = new StringBuilder();
+        var html = new System.Text.StringBuilder();
         
         html.AppendLine(@"
 <!DOCTYPE html>
@@ -174,10 +197,7 @@ public class PdfService : IPdfService
 <head>
     <meta charset=""utf-8"">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
-        
         body { 
-            /* IPAex明朝を指定 */
             font-family: 'IPAexMincho', serif; 
             margin: 0;
             padding: 20px;

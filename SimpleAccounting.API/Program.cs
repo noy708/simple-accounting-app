@@ -15,6 +15,10 @@ builder.Services.AddDbContext<AccountingDbContext>(options =>
 // Register services
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<ITemplateRenderingService, TemplateRenderingService>();
+
+// Add Razor view engine for template rendering
+builder.Services.AddRazorPages();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
