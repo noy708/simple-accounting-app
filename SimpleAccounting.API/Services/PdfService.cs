@@ -1,18 +1,62 @@
-using PuppeteerSharp;
-using PuppeteerSharp.Media;
+using Microsoft.Playwright;
 using SimpleAccounting.API.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
+using SimpleAccounting.API.Models;
 
 namespace SimpleAccounting.API.Services;
 
 public class PdfService : IPdfService
 {
     private readonly AccountingDbContext _context;
+    private readonly ITemplateRenderingService _templateRenderingService;
 
-    public PdfService(AccountingDbContext context)
+    public PdfService(AccountingDbContext context, ITemplateRenderingService templateRenderingService)
     {
         _context = context;
+        _templateRenderingService = templateRenderingService;
+    }
+
+    private async Task EnsurePlaywrightBrowsersInstalledAsync()
+    {
+        try
+        {
+            // Playwrightブラウザが既にインストールされているかチェック
+            using var playwright = await Playwright.CreateAsync();
+            
+            // テスト用にブラウザ起動を試行
+            try
+            {
+                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+                {
+                    Headless = true
+                });
+                await browser.CloseAsync();
+                Console.WriteLine("Playwrightブラウザは既にインストールされています");
+                return;
+            }
+            catch (Exception ex) when (ex.Message.Contains("Executable doesn't exist"))
+            {
+                Console.WriteLine("Playwrightブラウザがインストールされていません。自動インストールを実行します...");
+                
+                // Microsoft.Playwright.Program.Main を使用してブラウザをインストール
+                var exitCode = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+                
+                if (exitCode == 0)
+                {
+                    Console.WriteLine("Playwrightブラウザのインストールが完了しました");
+                }
+                else
+                {
+                    Console.WriteLine($"Playwrightブラウザのインストールに失敗しました。終了コード: {exitCode}");
+                    throw new InvalidOperationException("Playwrightブラウザのインストールに失敗しました");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Playwrightブラウザの確認中にエラーが発生しました: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<byte[]> GenerateTransactionsPdfAsync()
@@ -20,6 +64,9 @@ public class PdfService : IPdfService
         try
         {
             Console.WriteLine("PDF生成開始");
+            
+            // Playwrightブラウザの自動インストールを確認
+            await EnsurePlaywrightBrowsersInstalledAsync();
             
             // 取引データを取得
             var transactions = await _context.Transactions
@@ -33,11 +80,34 @@ public class PdfService : IPdfService
             Console.WriteLine($"残高計算完了: {balance}");
 
             // HTMLテンプレートを生成
-            var html = GenerateHtmlTemplate(transactions, balance);
-            Console.WriteLine("HTMLテンプレート生成完了");
+            Console.WriteLine("ViewModel作成開始");
+            var viewModel = new TransactionReportViewModel
+            {
+                Transactions = transactions,
+                Balance = balance,
+                GeneratedAt = DateTime.Now
+            };
+            Console.WriteLine("ViewModel作成完了");
+            
+            Console.WriteLine("テンプレートレンダリング開始");
+            string html;
+            try
+            {
+                html = await _templateRenderingService.RenderTemplateAsync("Templates/TransactionReport", viewModel);
+                Console.WriteLine("HTMLテンプレート生成完了");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"テンプレートレンダリングエラー: {ex.Message}");
+                Console.WriteLine("フォールバック: 従来のHTML生成方法を使用します");
+                html = GenerateHtmlTemplateFallback(transactions, balance);
+                Console.WriteLine("フォールバックHTMLテンプレート生成完了");
+            }
 
-            // PuppeteerSharpでPDF生成
-            Console.WriteLine("Chromiumダウンロード開始");
+            // PlaywrightでPDF生成
+            Console.WriteLine("Playwright初期化開始");
+            
+            using var playwright = await Playwright.CreateAsync();
             
             IBrowser? browser = null;
             IPage? page = null;
@@ -46,11 +116,20 @@ public class PdfService : IPdfService
             {
                 Console.WriteLine("ブラウザ起動開始");
                 
-                browser = await Puppeteer.LaunchAsync(new LaunchOptions
+                browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
-                    ExecutablePath = "/usr/bin/chromium",
                     Headless = true,  // Dockerコンテナ内ではheadlessモードが必要
-                    Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
+                    Args = new[] { 
+                        "--no-sandbox", 
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-extensions",
+                        "--disable-gpu",
+                        "--no-first-run",
+                        "--disable-background-timer-throttling",
+                        "--disable-backgrounding-occluded-windows",
+                        "--disable-renderer-backgrounding"
+                    }
                 });
                 Console.WriteLine("ブラウザ起動完了");
 
@@ -63,10 +142,10 @@ public class PdfService : IPdfService
                 Console.WriteLine("HTMLコンテンツ設定完了");
                 
                 Console.WriteLine("PDF生成開始");
-                var pdfBytes = await page.PdfDataAsync(new PdfOptions
+                var pdfBytes = await page.PdfAsync(new PagePdfOptions
                 {
-                    Format = PaperFormat.A4,
-                    MarginOptions = new MarginOptions
+                    Format = "A4",
+                    Margin = new Margin
                     {
                         Top = "20mm",
                         Right = "20mm", 
@@ -77,7 +156,7 @@ public class PdfService : IPdfService
                 });
                 Console.WriteLine("PDF生成完了");
 
-                return pdfBytes ?? Array.Empty<byte>();
+                return pdfBytes;
             }
             catch (Exception ex)
             {
@@ -108,9 +187,9 @@ public class PdfService : IPdfService
         }
     }
 
-    private string GenerateHtmlTemplate(IEnumerable<Models.Transaction> transactions, decimal balance)
+    private string GenerateHtmlTemplateFallback(IEnumerable<Models.Transaction> transactions, decimal balance)
     {
-        var html = new StringBuilder();
+        var html = new System.Text.StringBuilder();
         
         html.AppendLine(@"
 <!DOCTYPE html>
@@ -118,10 +197,7 @@ public class PdfService : IPdfService
 <head>
     <meta charset=""utf-8"">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
-        
         body { 
-            /* IPAex明朝を指定 */
             font-family: 'IPAexMincho', serif; 
             margin: 0;
             padding: 20px;
