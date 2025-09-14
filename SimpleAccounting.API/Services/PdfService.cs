@@ -14,62 +14,57 @@ public class PdfService : IPdfService
         _context = context;
     }
 
+    private async Task EnsurePlaywrightBrowsersInstalledAsync()
+    {
+        try
+        {
+            // Playwrightブラウザが既にインストールされているかチェック
+            using var playwright = await Playwright.CreateAsync();
+            
+            // テスト用にブラウザ起動を試行
+            try
+            {
+                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+                {
+                    Headless = true
+                });
+                await browser.CloseAsync();
+                Console.WriteLine("Playwrightブラウザは既にインストールされています");
+                return;
+            }
+            catch (Exception ex) when (ex.Message.Contains("Executable doesn't exist"))
+            {
+                Console.WriteLine("Playwrightブラウザがインストールされていません。自動インストールを実行します...");
+                
+                // Microsoft.Playwright.Program.Main を使用してブラウザをインストール
+                var exitCode = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+                
+                if (exitCode == 0)
+                {
+                    Console.WriteLine("Playwrightブラウザのインストールが完了しました");
+                }
+                else
+                {
+                    Console.WriteLine($"Playwrightブラウザのインストールに失敗しました。終了コード: {exitCode}");
+                    throw new InvalidOperationException("Playwrightブラウザのインストールに失敗しました");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Playwrightブラウザの確認中にエラーが発生しました: {ex.Message}");
+            throw;
+        }
+    }
+
     public async Task<byte[]> GenerateTransactionsPdfAsync()
     {
         try
         {
             Console.WriteLine("PDF生成開始");
             
-            // Playwright環境変数の設定とデバッグ
-            var browsersPath = "/ms-playwright";
-            Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", browsersPath);
-            
-            // デバッグ情報を出力
-            Console.WriteLine($"PLAYWRIGHT_BROWSERS_PATH設定: {Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH")}");
-            Console.WriteLine($"現在のユーザー: {Environment.UserName}");
-            Console.WriteLine($"ホームディレクトリ: {Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}");
-            
-            // ブラウザディレクトリの存在確認
-            if (Directory.Exists(browsersPath))
-            {
-                Console.WriteLine($"ブラウザディレクトリが存在します: {browsersPath}");
-                var directories = Directory.GetDirectories(browsersPath);
-                foreach (var dir in directories)
-                {
-                    Console.WriteLine($"  サブディレクトリ: {dir}");
-                    // Chromiumディレクトリ内をチェック
-                    if (dir.Contains("chromium"))
-                    {
-                        var chromeFiles = Directory.GetFiles(dir, "*chrome*", SearchOption.AllDirectories);
-                        foreach (var file in chromeFiles.Take(5))
-                        {
-                            Console.WriteLine($"    ファイル: {file}");
-                        }
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine($"ブラウザディレクトリが存在しません: {browsersPath}");
-                
-                // 代替パスを試す
-                var altPaths = new[]
-                {
-                    "/home/appuser/.cache/ms-playwright",
-                    "/root/.cache/ms-playwright"
-                };
-                
-                foreach (var altPath in altPaths)
-                {
-                    if (Directory.Exists(altPath))
-                    {
-                        Console.WriteLine($"代替パスが見つかりました: {altPath}");
-                        Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", altPath);
-                        browsersPath = altPath;
-                        break;
-                    }
-                }
-            }
+            // Playwrightブラウザの自動インストールを確認
+            await EnsurePlaywrightBrowsersInstalledAsync();
             
             // 取引データを取得
             var transactions = await _context.Transactions
