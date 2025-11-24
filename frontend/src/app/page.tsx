@@ -12,9 +12,17 @@ import {
   Snackbar,
   Alert,
   Fade,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { AccountBalance } from '@mui/icons-material';
+import { AccountBalance, Help } from '@mui/icons-material';
 import { BalanceDisplay, TransactionForm, TransactionList, PdfDownloadButton } from '@/components';
 import { useTransactions } from '@/hooks/useTransactions';
 import { CreateTransactionDto } from '@/types/transaction';
@@ -38,6 +46,9 @@ export default function Dashboard() {
     error,
     createTransaction,
   } = useTransactions();
+
+  // Help dialog state
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Notification state management
   const [notification, setNotification] = useState<NotificationState>({
@@ -116,6 +127,15 @@ export default function Dashboard() {
               }
             }}
           />
+          <Tooltip title="ヘルプ">
+            <IconButton
+              color="inherit"
+              onClick={() => setHelpOpen(true)}
+              sx={{ ml: 1 }}
+            >
+              <Help />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -157,6 +177,47 @@ export default function Dashboard() {
           </Grid>
         </Grid>
       </Container>
+
+      {/* Help Dialog */}
+      <Dialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        aria-labelledby="help-dialog-title"
+      >
+        <DialogTitle id="help-dialog-title">
+          ヘルプ
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText paragraph>
+            このアプリケーションは、日々の取引を記録し、収支を管理するためのシンプル会計アプリです。
+          </DialogContentText>
+          <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+            主な機能:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, m: 0 }}>
+            <li>
+              <Typography variant="body2">
+                <strong>取引の追加:</strong> 日付、説明、金額、カテゴリを入力して取引を記録します。
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2">
+                <strong>残高表示:</strong> 現在の総残高をリアルタイムで確認できます。
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body2">
+                <strong>PDF出力:</strong> 取引履歴をPDF形式でダウンロードして保存できます。
+              </Typography>
+            </li>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHelpOpen(false)} autoFocus>
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Notification Snackbar */}
       <Snackbar
